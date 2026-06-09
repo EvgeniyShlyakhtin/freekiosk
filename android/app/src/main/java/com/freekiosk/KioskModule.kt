@@ -188,8 +188,8 @@ class KioskModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
                             }
                             
                             dpm.setLockTaskPackages(adminComponent, uniqueWhitelist.toTypedArray())
-                            dpm.setScreenCaptureDisabled(adminComponent, true)
                             activity.startLockTask()
+                            dpm.setScreenCaptureDisabled(adminComponent, true)
                             android.util.Log.d("KioskModule", "Full lock task started (Device Owner) with whitelist: $uniqueWhitelist")
                             // Update DE boot flag so the next LOCKED_BOOT_COMPLETED also locks immediately
                             BootReceiver.updateDeBootFlag(reactApplicationContext, true)

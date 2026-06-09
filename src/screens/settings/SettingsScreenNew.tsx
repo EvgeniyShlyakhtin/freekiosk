@@ -1233,7 +1233,6 @@ const SettingsScreenNew: React.FC<SettingsScreenProps> = ({ navigation }) => {
     } else {
       await StorageService.saveAutoReload(false);
       await StorageService.saveKioskEnabled(kioskEnabled);
-      await StorageService.saveScreensaverEnabled(false);
       await StorageService.saveAutoBrightnessEnabled(false);
       await StorageService.saveInactivityReturnEnabled(false);
     }
