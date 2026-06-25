@@ -16,6 +16,7 @@ import {
 const { HttpServerModule } = NativeModules;
 
 import KioskModule from '../utils/KioskModule';
+import UpdateModule from '../utils/UpdateModule';
 import { WebView } from 'react-native-webview';
 import type { WebViewErrorEvent, ShouldStartLoadRequest } from 'react-native-webview/lib/WebViewTypes';
 import { useNavigation } from '@react-navigation/native';
@@ -91,6 +92,9 @@ const WebViewComponent = forwardRef<WebViewComponentRef, WebViewComponentProps>(
   const [error, setError] = useState<boolean>(false);
   const [pageLoaded, setPageLoaded] = useState<boolean>(false);
   const [blockedUrlMessage, setBlockedUrlMessage] = useState<string | null>(null);
+  // App version for the error-overlay footer — read from the installed APK (build.gradle)
+  // via UpdateModule rather than hardcoded, so it never drifts on release bumps.
+  const [appVersion, setAppVersion] = useState<string>('');
   const blockedUrlTimerRef = useRef<any>(null);
   const isGoingBackRef = useRef<boolean>(false); // Prevent goBack loop for URL filter
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -235,6 +239,13 @@ const WebViewComponent = forwardRef<WebViewComponentRef, WebViewComponentProps>(
       useNativeDriver: true,
     }).start();
   }, [fadeAnim]);
+
+  // Fetch the installed app version once for the error-overlay footer.
+  React.useEffect(() => {
+    UpdateModule.getCurrentVersion()
+      .then(info => setAppVersion(info.versionName))
+      .catch(() => {});
+  }, []);
 
   // Execute JavaScript from API — with retry if page is still loading
   React.useEffect(() => {
@@ -880,7 +891,7 @@ const WebViewComponent = forwardRef<WebViewComponentRef, WebViewComponentProps>(
 
             {/* Footer */}
             <Text style={styles.footerText}>
-              Version 1.2.20 • by Rushb
+              {appVersion ? `Version ${appVersion} • by Rushb` : 'by Rushb'}
             </Text>
           </Animated.View>
         </ScrollView>
