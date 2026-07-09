@@ -587,19 +587,12 @@ class MainActivity : ReactActivity() {
     // The backup send from handleNavigationIntent (500ms) handles edge cases.
     // No need for a third send here.
 
-    // Notifier React Native qu'on est revenu sur FreeKiosk (depuis une app externe)
-    // NE PAS envoyer si c'est un retour volontaire (l'overlay l'a déjà envoyé)
-    if (isExternalAppMode && !isVoluntaryReturn) {
-      sendAppReturnedEvent(false)  // voluntary=false = auto-relaunch possible
-    }
-
     val kioskEnabled = isKioskEnabled()
 
     // Fix #106: In external app mode, on involuntary returns, do NOT re-enter
     // startLockTask on MainActivity (which would pin FreeKiosk). Instead, immediately
     // relaunch the external app from the native layer to minimize the flash.
     if (isExternalAppMode && !isVoluntaryReturn && kioskEnabled) {
-      isVoluntaryReturn = false
       // Relaunch the external app directly if possible
       val targetPkg = externalAppPackage
       if (targetPkg != null) {
@@ -614,12 +607,25 @@ class MainActivity : ReactActivity() {
             startActivity(launchIntent)
             // Move FreeKiosk to background so external app stays visible
             Handler(Looper.getMainLooper()).postDelayed({ moveTaskToBack(true) }, 300)
+            // #203 — Deliberately NOT sending onAppReturned on this path: JS answers
+            // that event with stopOverlayService(), and since FreeKiosk goes straight
+            // back to the background its JS timers freeze — the pending stop then fires
+            // on the NEXT foreground pass (e.g. returning from Settings) and kills the
+            // OverlayService that was just restarted, leaving the 5-tap escape dead.
+            isVoluntaryReturn = false
             return
           }
         } catch (e: Exception) {
           DebugLog.errorProduction("MainActivity", "Failed to relaunch external app: ${e.message}")
         }
       }
+    }
+
+    // Notifier React Native qu'on est revenu sur FreeKiosk (depuis une app externe)
+    // NE PAS envoyer si c'est un retour volontaire (l'overlay l'a déjà envoyé),
+    // ni si le fast-path ci-dessus a relancé l'app externe directement (#203)
+    if (isExternalAppMode && !isVoluntaryReturn) {
+      sendAppReturnedEvent(false)  // voluntary=false = auto-relaunch possible
     }
     isVoluntaryReturn = false  // Reset pour le prochain resume
 

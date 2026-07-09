@@ -1496,6 +1496,9 @@ const KioskScreen: React.FC<KioskScreenProps> = ({ navigation }) => {
       if (savedUrl) setUrl(savedUrl);
       setAutoReload(savedAutoReload);
       setPauseWebMediaWhenHidden(savedPauseWebMediaWhenHidden);
+      // #205 — re-apply the opt-in 2-way audio (intercom) mode on each kiosk launch: the
+      // native AudioRecordingCallback registration doesn't survive an app restart. No-op when off.
+      try { NativeModules.AudioControlModule?.setIntercomMode(bool(K.INTERCOM_MODE, false)); } catch {}
       setScreensaverEnabled(savedScreensaverEnabled);
       
       // Broadcast that settings are loaded (for ADB config waiting)
@@ -1536,6 +1539,7 @@ const KioskScreen: React.FC<KioskScreenProps> = ({ navigation }) => {
       const savedBackButtonTimerDelay = num(K.BACK_BUTTON_TIMER_DELAY, 5);
       const savedKeyboardMode = str(K.KEYBOARD_MODE) ?? 'default';
       const savedAllowPowerButton = bool(K.ALLOW_POWER_BUTTON, true);
+      const savedBlockFactoryReset = bool(K.BLOCK_FACTORY_RESET, false);
       const savedAllowNotifications = bool(K.ALLOW_NOTIFICATIONS, false);
       const savedAllowSystemInfo = bool(K.ALLOW_SYSTEM_INFO, false);
 
@@ -1547,7 +1551,15 @@ const KioskScreen: React.FC<KioskScreenProps> = ({ navigation }) => {
       setKeyboardMode(savedKeyboardMode);
       setAllowPowerButton(savedAllowPowerButton);
       setAllowNotifications(savedAllowNotifications);
-      
+
+      // Reconcile factory-reset restriction with the stored toggle on every launch (#201),
+      // independently of Lock Mode. No-op natively if not Device Owner.
+      try {
+        await KioskModule.setFactoryResetBlocked(savedBlockFactoryReset);
+      } catch (error) {
+        console.warn('[KioskScreen] setFactoryResetBlocked reconcile error (non-blocking):', error);
+      }
+
       // Load managed apps
       const savedManagedApps = await StorageService.getManagedApps();
       setManagedApps(savedManagedApps);
@@ -1955,7 +1967,13 @@ const KioskScreen: React.FC<KioskScreenProps> = ({ navigation }) => {
   const triggerScreensaverTimeout = useCallback(() => {
     if (isScheduledSleep) return;
     if (!(screensaverEnabled && inactivityEnabled)) return;
-    if (motionEnabled) {
+    // #190 — No motion pre-check in External App mode: FreeKiosk is backgrounded there,
+    // so the 10s pre-check setTimeout below is frozen by RN (the exact timer freeze the
+    // native countdown works around) and the screensaver never activated. The camera
+    // can't capture from the background anyway, so the pre-check could never see motion.
+    // Activate directly; wake-on-motion still works once the screensaver has brought
+    // FreeKiosk back to the foreground.
+    if (motionEnabled && displayMode !== 'external_app') {
       console.log('[KioskScreen] Inactivity expired — starting motion pre-check');
       setIsPreCheckingMotion(true);
       // Pre-check window; if no motion is detected within it, activate the screensaver
@@ -1969,7 +1987,7 @@ const KioskScreen: React.FC<KioskScreenProps> = ({ navigation }) => {
       Keyboard.dismiss();
       setIsScreensaverActive(true);
     }
-  }, [isScheduledSleep, screensaverEnabled, inactivityEnabled, motionEnabled]);
+  }, [isScheduledSleep, screensaverEnabled, inactivityEnabled, motionEnabled, displayMode]);
 
   const resetTimer = () => {
     clearTimer();

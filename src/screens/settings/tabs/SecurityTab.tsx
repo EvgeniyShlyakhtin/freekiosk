@@ -29,6 +29,10 @@ interface SecurityTabProps {
   // Power button
   allowPowerButton: boolean;
   onAllowPowerButtonChange: (value: boolean) => void;
+
+  // Block factory reset (Device Owner only) (#201)
+  blockFactoryReset: boolean;
+  onBlockFactoryResetChange: (value: boolean) => void;
   
   // Notifications (NFC support)
   allowNotifications: boolean;
@@ -111,6 +115,8 @@ const SecurityTab: React.FC<SecurityTabProps> = ({
   onKioskEnabledChange,
   allowPowerButton,
   onAllowPowerButtonChange,
+  blockFactoryReset,
+  onBlockFactoryResetChange,
   allowNotifications,
   onAllowNotificationsChange,
   allowSystemInfo,
@@ -240,6 +246,19 @@ const SecurityTab: React.FC<SecurityTabProps> = ({
               hint="Displays the native Android status bar (time, battery, connectivity) in the locked app. This also fixes audio being muted on some Samsung/OneUI devices in lock mode."
               value={allowSystemInfo}
               onValueChange={onAllowSystemInfoChange}
+            />
+          </>
+        )}
+
+        {/* Block factory reset — Device Owner only, independent of Lock Mode (#201) */}
+        {isDeviceOwner && (
+          <>
+            <View style={styles.divider} />
+            <SettingsSwitch
+              label="🛑 Block Factory Reset"
+              hint="Removes the 'Factory reset' option from the system Settings app (Device Owner restriction). Useful when the Settings app is on your multi-app whitelist, so locked users can't wipe the device. Persists across reboots. Takes effect immediately, even outside Lock Mode."
+              value={blockFactoryReset}
+              onValueChange={onBlockFactoryResetChange}
             />
           </>
         )}
