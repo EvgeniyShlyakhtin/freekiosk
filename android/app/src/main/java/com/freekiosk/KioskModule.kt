@@ -351,8 +351,20 @@ class KioskModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
                                     // Android requires HOME feature when NOTIFICATIONS is enabled
                                     lockTaskFeatures = lockTaskFeatures or DevicePolicyManager.LOCK_TASK_FEATURE_HOME
                                 }
+
+                                // #208 — Keep the system keyguard alive while in lock task so a native
+                                // screen-lock (PIN/pattern/password) actually prompts after screen off/on.
+                                // Without LOCK_TASK_FEATURE_KEYGUARD, Android disables the keyguard in
+                                // LockTask mode and the configured screen-lock never appears. Gated on the
+                                // opt-in "System screen-lock compatibility" setting AND a secure lock being set.
+                                val screenLockCompat = BootReceiver.readScreenLockCompatFlag(reactApplicationContext) &&
+                                    BootReceiver.isDeviceSecure(reactApplicationContext)
+                                if (screenLockCompat) {
+                                    lockTaskFeatures = lockTaskFeatures or DevicePolicyManager.LOCK_TASK_FEATURE_KEYGUARD
+                                }
+
                                 dpm.setLockTaskFeatures(adminComponent, lockTaskFeatures)
-                                android.util.Log.d("KioskModule", "Lock task features set: blockPowerButton=${!allowPowerButton}, notifications=$allowNotifications, systemInfo=$allowSystemInfo (flags=$lockTaskFeatures)")
+                                android.util.Log.d("KioskModule", "Lock task features set: blockPowerButton=${!allowPowerButton}, notifications=$allowNotifications, systemInfo=$allowSystemInfo, keyguard=$screenLockCompat (flags=$lockTaskFeatures)")
                             }
 
                             dpm.setLockTaskPackages(adminComponent, uniqueWhitelist.toTypedArray())

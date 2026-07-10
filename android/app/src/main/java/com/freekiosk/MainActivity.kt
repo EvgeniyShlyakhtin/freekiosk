@@ -454,8 +454,20 @@ class MainActivity : ReactActivity() {
           // Android requires HOME feature when NOTIFICATIONS is enabled
           lockTaskFeatures = lockTaskFeatures or DevicePolicyManager.LOCK_TASK_FEATURE_HOME
         }
+
+        // #208 — Keep the system keyguard alive while in lock task so a native Android
+        // screen-lock (PIN/pattern/password) actually prompts after the screen turns off
+        // and back on. Without LOCK_TASK_FEATURE_KEYGUARD, Android DISABLES the keyguard in
+        // LockTask mode, so the configured screen-lock never appears in multi-app/kiosk mode.
+        // Gated on the opt-in "System screen-lock compatibility" setting AND a secure lock
+        // actually being set (same gate as the boot path in BootReceiver).
+        val screenLockCompat = BootReceiver.readScreenLockCompatFlag(this) && BootReceiver.isDeviceSecure(this)
+        if (screenLockCompat) {
+          lockTaskFeatures = lockTaskFeatures or DevicePolicyManager.LOCK_TASK_FEATURE_KEYGUARD
+        }
+
         devicePolicyManager.setLockTaskFeatures(adminComponent, lockTaskFeatures)
-        DebugLog.d("MainActivity", "Lock task features set: blockPowerButton=${!allowPowerButton}, notifications=$allowNotifications, systemInfo=$allowSystemInfo (flags=$lockTaskFeatures)")
+        DebugLog.d("MainActivity", "Lock task features set: blockPowerButton=${!allowPowerButton}, notifications=$allowNotifications, systemInfo=$allowSystemInfo, keyguard=$screenLockCompat (flags=$lockTaskFeatures)")
       }
       
       // Safety net: force unmute audio streams after configuring lock task

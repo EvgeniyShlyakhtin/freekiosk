@@ -292,7 +292,7 @@ const SecurityTab: React.FC<SecurityTabProps> = ({
             <View style={styles.divider} />
             <SettingsSwitch
               label="🔐 System screen-lock compatibility"
-              hint="Enable ONLY if you set a native Android screen-lock (PIN/password) on this device. FreeKiosk will then step aside for the secure lock screen at boot instead of locking immediately, which prevents the reboot freeze caused by the conflict between the kiosk and the secure lock screen. ⚠️ A system screen-lock means someone must enter the password on the device after every reboot before the kiosk starts — unsuitable for unattended devices. For device security, the FreeKiosk exit PIN + Device Owner is usually the better choice."
+              hint="Enable ONLY if you set a native Android screen-lock (PIN/password) on this device. FreeKiosk then (1) steps aside for the secure lock screen at boot instead of locking immediately — preventing the reboot freeze caused by the conflict between the kiosk and the secure lock screen — and (2) keeps the system keyguard active while pinned, so the screen-lock actually prompts after the screen turns off and back on (without this, lock-task mode disables the keyguard and the password never appears). ⚠️ A system screen-lock means someone must enter the password on the device after every reboot before the kiosk starts, and on every wake — unsuitable for unattended devices. For device security, the FreeKiosk exit PIN + Device Owner is usually the better choice."
               value={screenLockCompatEnabled}
               onValueChange={onScreenLockCompatChange}
             />

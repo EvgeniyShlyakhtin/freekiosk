@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- 🔐 **Native Android screen-lock never prompts after screen off/on in multi-app / kiosk mode** (#208): With a device that has both FreeKiosk (Device Owner, lock-task) and a **native Android screen-lock (PIN/pattern/password)** configured, the screen-lock silently never re-appeared after the screen turned off and back on: the device woke straight into the kiosk with no password. Root cause: Android **disables the keyguard while in LockTask mode** unless the app opts back in via `LOCK_TASK_FEATURE_KEYGUARD`, and FreeKiosk's `setLockTaskFeatures()` calls never set that flag. Fixed by adding the flag on every path that configures lock-task features (`MainActivity.enableKioskRestrictions`, `KioskModule.startLockTask`, and, importantly for the reported multi-app scenario, `AppLauncherModule` when re-applying features to launch a whitelisted app, which previously dropped the flag and re-suppressed the lock). It is gated on the existing **opt-in "System screen-lock compatibility"** setting (Security, Device Owner only, **off by default**) **and** a secure lock actually being set (`KeyguardManager.isDeviceSecure()`), the same gate as the boot deferral added in #199, so the keyguard is honored at runtime only when the admin has explicitly enabled screen-lock compatibility. **Zero behavior change when the toggle is off or no screen-lock is set.** ⚠️ Because this makes the native lock work as intended, the device then requires the password on **every wake** (as well as after every reboot), suitable only for attended devices; the in-app hint makes this explicit. The boot path is unchanged and remains opt-in. Reported by @23575437.
+
 ## [1.2.20-beta.4] - 2026-07-09
 
 ### Added
